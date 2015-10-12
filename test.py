@@ -1,7 +1,30 @@
 #!/usr/bin/env python3
 
 import serial
-import io;
+import io
+from enum import IntEnum
+import time;
+
+###############################################################################
+
+class Waveform(IntEnum):
+    sine = 0
+    square = 1
+    triangle = 2
+    arb1 = 3
+    arb2 = 4
+    arb3 = 5
+    arb4 = 6
+    lorentz_pulse = 7
+    multi_tone = 8
+    random_noise = 9
+    ecg = 10
+    trapezoidal_pulse = 11
+    sinc_pulse = 12
+    narrow_pulse = 13
+    white_noise = 14
+    am = 15
+    fm = 16
 
 ###############################################################################
 
@@ -29,13 +52,19 @@ class Channel:
     
     def set_offset(self, offset):
         self._device.writeCmd('%s%02.1f' % (self._set_cmd('o'), offset))
+    
+    def set_waveform(self, waveform):
+        self._device.writeCmd('%s%d' %  (self._set_cmd('w'), int(waveform)))
+    
+    def set_duty_cycle(self, duty):
+        self._device.writeCmd('%s%03d' % (self._set_cmd('d'), int(duty * 10)))
 
 ###############################################################################
 
 class FY3200S:
-    _debug_mode = False
-    
     def __init__(self, device = '/dev/ttyUSB0'):
+        self._debug_mode = False
+        
         self._serial = serial.Serial(device, 9600, timeout=1)
         self._serialIO = io.TextIOWrapper(io.BufferedRWPair(self._serial, self._serial), newline='')
         
@@ -60,8 +89,13 @@ class FY3200S:
         del self._serialIO
         del self._serial
     
-    def set_debug_mode(self, enable):
-        self._debug_mode = enable
+    @property
+    def debug_mode(self):
+        return self._debug_mode
+    
+    @debug_mode.setter
+    def debug_mode(self, value):
+        self._debug_mode = value
     
     def is_open(self):
         return hasattr(self, '_serial') and self._serial is not None
@@ -92,11 +126,21 @@ class FY3200S:
 ###############################################################################
 
 funcGen = FY3200S()
-funcGen.set_debug_mode(True)
+funcGen.debug_mode = True
 
 print(funcGen.get_device_id())
 funcGen[0].set_frequency(5000)
-funcGen.channels[0].set_amplitude(2.5)
+funcGen[0].set_amplitude(2.5)
+time.sleep(0.1)
 funcGen[0].set_offset(0)
+funcGen[0].set_waveform(Waveform.square)
+funcGen[0].set_duty_cycle(50)
+
+funcGen[1].set_frequency(5000)
+funcGen[1].set_amplitude(2.5)
+time.sleep(0.1)
+funcGen[1].set_offset(0)
+funcGen[1].set_waveform(Waveform.square)
+funcGen[1].set_duty_cycle(50)
 
 funcGen.close()
